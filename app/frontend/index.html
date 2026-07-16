@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Customer Intelligence Dashboard</title>
+    <!-- Google Fonts: Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Vanilla Styling -->
+    <link rel="stylesheet" href="style.css">
+    <!-- ApexCharts for rich visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Feather Icons for modern vector icons -->
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-icon"></div>
+                <div class="logo-text">
+                    <h1>Antigravity</h1>
+                    <span>Customer Intelligence</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-menu">
+                <a href="#" class="menu-item active" data-tab="overview">
+                    <i data-feather="grid"></i>
+                    <span>Executive KPI</span>
+                </a>
+                <a href="#" class="menu-item" data-tab="segmentation">
+                    <i data-feather="users"></i>
+                    <span>Segmentation</span>
+                </a>
+                <a href="#" class="menu-item" data-tab="logistics">
+                    <i data-feather="truck"></i>
+                    <span>Logistics & Satisfaction</span>
+                </a>
+                <a href="#" class="menu-item" data-tab="sellers">
+                    <i data-feather="award"></i>
+                    <span>Seller Analytics</span>
+                </a>
+                <a href="#" class="menu-item" data-tab="products">
+                    <i data-feather="package"></i>
+                    <span>Product Sales</span>
+                </a>
+                <a href="#" class="menu-item" data-tab="advanced">
+                    <i data-feather="trending-up"></i>
+                    <span>CLV & Forecasting</span>
+                </a>
+                <a href="#" class="menu-item" data-tab="recommendations">
+                    <i data-feather="star"></i>
+                    <span>Recommendation Engine</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="dataset-selector-container">
+                    <label for="dataset-select">Active Dataset</label>
+                    <select id="dataset-select">
+                        <option value="olist">Olist E-Commerce</option>
+                        <option value="instacart" disabled>Instacart Basket (Locked)</option>
+                        <option value="teleco" disabled>Teleco Cohorts (Locked)</option>
+                    </select>
+                </div>
+                <div class="user-profile">
+                    <div class="avatar">Admin</div>
+                    <div class="profile-info">
+                        <h4>Antigravity Partner</h4>
+                        <span>Executive Officer</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Dashboard Viewport -->
+        <main class="viewport">
+            <header class="viewport-header">
+                <div class="header-title">
+                    <h2 id="view-title">Executive KPI Dashboard</h2>
+                    <p id="view-subtitle">High-level operational stats & financial metrics</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" id="refresh-btn">
+                        <i data-feather="refresh-cw"></i>
+                        <span>Refresh Data</span>
+                    </button>
+                    <button class="btn btn-primary" id="precompute-btn">
+                        <i data-feather="play"></i>
+                        <span>Recompute Models</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="loading-overlay" id="loading-spinner">
+                <div class="spinner"></div>
+                <p>Analyzing datasets & loading intelligence...</p>
+            </div>
+
+            <!-- TAB CONTENT PANELS -->
+            <div class="tab-panel active" id="panel-overview">
+                <!-- KPI Summary cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-revenue"><i data-feather="dollar-sign"></i></div>
+                        <div class="kpi-content">
+                            <span>Total Revenue</span>
+                            <h3 id="overview-revenue">R$ 0.00</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-orders"><i data-feather="shopping-bag"></i></div>
+                        <div class="kpi-content">
+                            <span>Total Orders</span>
+                            <h3 id="overview-orders">0</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-customers"><i data-feather="user"></i></div>
+                        <div class="kpi-content">
+                            <span>Total Customers</span>
+                            <h3 id="overview-customers">0</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-aov"><i data-feather="activity"></i></div>
+                        <div class="kpi-content">
+                            <span>Average Order Value</span>
+                            <h3 id="overview-aov">R$ 0.00</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts row 1 -->
+                <div class="chart-row dual-cols">
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Monthly Revenue & Order Volume</h4>
+                            <p>Monthly trends for growth and capacity</p>
+                        </div>
+                        <div class="chart-container" id="chart-monthly-trend"></div>
+                    </div>
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Payment Method Distribution</h4>
+                            <p>Revenue contribution by payment type</p>
+                        </div>
+                        <div class="chart-container" id="chart-payment-share"></div>
+                    </div>
+                </div>
+
+                <!-- Charts row 2 -->
+                <div class="chart-row dual-cols">
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Weekly Purchase Activity</h4>
+                            <p>Transaction volumes aggregated by weekday</p>
+                        </div>
+                        <div class="chart-container" id="chart-weekday-trend"></div>
+                    </div>
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Geographic Distribution (Top States)</h4>
+                            <p>Total generated revenue by Brazilian state</p>
+                        </div>
+                        <div class="chart-container" id="chart-state-revenue"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-panel" id="panel-segmentation">
+                <!-- KPI Summary cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-champions"><i data-feather="award"></i></div>
+                        <div class="kpi-content">
+                            <span>Champions Count</span>
+                            <h3 id="seg-champions">0</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-loyal"><i data-feather="heart"></i></div>
+                        <div class="kpi-content">
+                            <span>Loyal Customers</span>
+                            <h3 id="seg-loyal">0</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-risk"><i data-feather="alert-triangle"></i></div>
+                        <div class="kpi-content">
+                            <span>At Risk Customers</span>
+                            <h3 id="seg-risk">0</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-others"><i data-feather="hash"></i></div>
+                        <div class="kpi-content">
+                            <span>Other/New Customers</span>
+                            <h3 id="seg-others">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts row -->
+                <div class="chart-row dual-cols">
+                    <div class="chart-card glass-panel" style="flex: 1.2;">
+                        <div class="chart-header">
+                            <h4>Machine Learning Clustering (KMeans PCA)</h4>
+                            <p>Unsupervised grouping of customer recency, frequency, and monetary metrics mapped in 2D space</p>
+                        </div>
+                        <div class="chart-container" id="chart-kmeans-pca"></div>
+                    </div>
+                    <div class="chart-card glass-panel" style="flex: 0.8;">
+                        <div class="chart-header">
+                            <h4>RFM Segment Customer Share</h4>
+                            <p>Rule-based segments breakdown</p>
+                        </div>
+                        <div class="chart-container" id="chart-rfm-pie"></div>
+                    </div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Customer Segment Profile Matrix</h4>
+                            <p>Detailed performance benchmarks for rule-based RFM segments</p>
+                        </div>
+                        <div class="table-container">
+                            <table class="dashboard-table" id="rfm-table">
+                                <thead>
+                                    <tr>
+                                        <th>Segment</th>
+                                        <th>Customers Count</th>
+                                        <th>Total Revenue</th>
+                                        <th>Avg Recency (days)</th>
+                                        <th>Avg Frequency (orders)</th>
+                                        <th>Avg Monetary (R$)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-panel" id="panel-logistics">
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-delivery"><i data-feather="clock"></i></div>
+                        <div class="kpi-content">
+                            <span>Avg Delivery Time</span>
+                            <h3 id="log-avg-delivery">0.0 days</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-delayed"><i data-feather="shield-off"></i></div>
+                        <div class="kpi-content">
+                            <span>Delayed Delivery Rate</span>
+                            <h3 id="log-delayed-pct">0.0%</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-delay-duration"><i data-feather="alert-circle"></i></div>
+                        <div class="kpi-content">
+                            <span>Avg Delayed Duration</span>
+                            <h3 id="log-avg-delay-duration">0.0 days</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-rating"><i data-feather="smile"></i></div>
+                        <div class="kpi-content">
+                            <span>Avg Review Rating</span>
+                            <h3 id="log-avg-rating">0.0 / 5</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-row dual-cols">
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Delivery Duration Distribution</h4>
+                            <p>Number of orders grouped by total shipping transit days</p>
+                        </div>
+                        <div class="chart-container" id="chart-delivery-dist"></div>
+                    </div>
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Review Score Decay by Delivery Delay</h4>
+                            <p>Correlation showing how customer review rating falls as order estimated delivery delay increases</p>
+                        </div>
+                        <div class="chart-container" id="chart-rating-delay"></div>
+                    </div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Regional Logistics Metrics (States)</h4>
+                            <p>Shipping transit times and delay occurrences sorted by total revenue contribution</p>
+                        </div>
+                        <div class="table-container">
+                            <table class="dashboard-table" id="state-logistics-table">
+                                <thead>
+                                    <tr>
+                                        <th>State</th>
+                                        <th>Revenue (R$)</th>
+                                        <th>Customer Count</th>
+                                        <th>Avg Delivery Time (days)</th>
+                                        <th>Avg Delivery Delay (days)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-panel" id="panel-sellers">
+                <div class="chart-row dual-cols">
+                    <div class="chart-card glass-panel" style="flex: 1;">
+                        <div class="chart-header">
+                            <h4>Seller Revenue Concentration (Pareto Curve)</h4>
+                            <p>Shows what cumulative % of revenue is generated by what % of top sellers (conforming to the 80/20 rule)</p>
+                        </div>
+                        <div class="chart-container" id="chart-seller-pareto"></div>
+                    </div>
+                    <div class="chart-card glass-panel" style="flex: 1.2;">
+                        <div class="chart-header">
+                            <h4>Top 10 Marketplace Sellers</h4>
+                            <p>Sellers sorted by their Health Score (weighted combination of Revenue, Orders, and Average Rating)</p>
+                        </div>
+                        <div class="table-container">
+                            <table class="dashboard-table" id="sellers-ranking-table">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Seller ID</th>
+                                        <th>State</th>
+                                        <th>Revenue</th>
+                                        <th>Orders</th>
+                                        <th>Avg Rating</th>
+                                        <th>Health Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-panel" id="panel-products">
+                <div class="chart-row">
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Product Categories Performance</h4>
+                            <p>Detailed performance benchmarks for top product segments sorted by revenue contribution</p>
+                        </div>
+                        <div class="table-container">
+                            <table class="dashboard-table" id="product-cats-table">
+                                <thead>
+                                    <tr>
+                                        <th>Category</th>
+                                        <th>Total Revenue (R$)</th>
+                                        <th>Total Orders</th>
+                                        <th>Avg Unit Price</th>
+                                        <th>Avg Freight Cost</th>
+                                        <th>Freight to Value Ratio (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-panel" id="panel-advanced">
+                <div class="chart-row dual-cols">
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Customer Lifetime Value (CLV): Key Drivers</h4>
+                            <p>Random Forest regression feature importances showing features influencing customer lifetime monetary value</p>
+                        </div>
+                        <div class="chart-container" id="chart-clv-importance"></div>
+                    </div>
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>CLV Prediction Model Fit</h4>
+                            <p>Plot showing actual vs. predicted monetary value for a random sample of 1,000 customers (fit verification)</p>
+                        </div>
+                        <div class="chart-container" id="chart-clv-fit"></div>
+                    </div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Revenue Forecasting: Next 30-Day Outlook</h4>
+                            <p>Daily historical revenue series fitted with Facebook Prophet model showing predicted sales forecast and error bands</p>
+                        </div>
+                        <div class="chart-container" id="chart-sales-forecast"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-panel" id="panel-recommendations">
+                <!-- Search panel -->
+                <div class="search-panel glass-panel">
+                    <div class="search-title">
+                        <h3>Personalized Product Recommendation Engine</h3>
+                        <p>Search a Customer Unique ID to view their transaction history and get custom collaborative recommendations</p>
+                    </div>
+                    <div class="search-row">
+                        <div class="search-input-group">
+                            <i data-feather="search"></i>
+                            <input type="text" id="customer-search-input" placeholder="Enter Customer Unique ID (e.g. 7c396fd4830fd04220f754e42b4e5bff)...">
+                        </div>
+                        <button class="btn btn-primary" id="search-btn">Retrieve Recommendations</button>
+                    </div>
+                    <div class="samples-row">
+                        <span>Sample Active Users to Test:</span>
+                        <div class="sample-chips" id="sample-chips-container">
+                            <!-- Dynamic Chips -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Split section for customer lookup -->
+                <div class="recommendations-container" id="recommendations-results" style="display: none;">
+                    <div class="rec-column left-col">
+                        <div class="rec-card glass-panel">
+                            <div class="card-title-header">
+                                <i data-feather="shopping-cart"></i>
+                                <div>
+                                    <h4>Customer Purchase History</h4>
+                                    <span id="cust-meta-text">ID: 0000000000...</span>
+                                </div>
+                            </div>
+                            <div class="table-container history-table-container">
+                                <table class="dashboard-table text-small" id="purchase-history-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Product ID</th>
+                                            <th>Category</th>
+                                            <th>Price (R$)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dynamic Rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="rec-column right-col">
+                        <!-- SVD Recs -->
+                        <div class="rec-card glass-panel">
+                            <div class="card-title-header">
+                                <i data-feather="compass"></i>
+                                <div>
+                                    <h4>Matrix Factorization (SVD) Recommendations</h4>
+                                    <span>Top predictions based on user interaction behavior (ratings scaling)</span>
+                                </div>
+                            </div>
+                            <div class="table-container text-small">
+                                <table class="dashboard-table" id="svd-recs-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Product ID</th>
+                                            <th>Category</th>
+                                            <th>Est. Interaction Rating</th>
+                                            <th>Price</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dynamic Rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Cosine Similarity Recs -->
+                        <div class="rec-card glass-panel" style="margin-top: 20px;">
+                            <div class="card-title-header">
+                                <i data-feather="layers"></i>
+                                <div>
+                                    <h4>Item-Based Collaborative Filtering Recommendations</h4>
+                                    <span>Products similar to the customer's last purchased item (Cosine similarity)</span>
+                                </div>
+                            </div>
+                            <div class="table-container text-small">
+                                <table class="dashboard-table" id="sim-recs-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Product ID</th>
+                                            <th>Category</th>
+                                            <th>Similarity Score</th>
+                                            <th>Price</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dynamic Rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Vanilla Javascript Logic -->
+    <script src="app.js"></script>
+</body>
+</html>

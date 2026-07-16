@@ -1,0 +1,21 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+
+# Datasets (large files)
+datasets/
+
+# Local configuration and logs
+*.log
+.system_generated/
+.gemini/
+app/backend/precomputed/

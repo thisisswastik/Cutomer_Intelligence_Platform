@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Enterprise Customer Intelligence Dashboard</title>
     <!-- Google Fonts: Outfit -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Vanilla Styling -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=3">
     <!-- ApexCharts for rich visualization -->
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <!-- Feather Icons for modern vector icons -->
@@ -26,33 +29,43 @@
             </div>
             
             <nav class="sidebar-menu">
-                <a href="#" class="menu-item active" data-tab="overview">
+                <a href="#" class="menu-item active olist-only" data-tab="overview">
                     <i data-feather="grid"></i>
                     <span>Executive KPI</span>
                 </a>
-                <a href="#" class="menu-item" data-tab="segmentation">
+                <a href="#" class="menu-item olist-only" data-tab="segmentation">
                     <i data-feather="users"></i>
                     <span>Segmentation</span>
                 </a>
-                <a href="#" class="menu-item" data-tab="logistics">
+                <a href="#" class="menu-item olist-only" data-tab="logistics">
                     <i data-feather="truck"></i>
                     <span>Logistics & Satisfaction</span>
                 </a>
-                <a href="#" class="menu-item" data-tab="sellers">
+                <a href="#" class="menu-item olist-only" data-tab="sellers">
                     <i data-feather="award"></i>
                     <span>Seller Analytics</span>
                 </a>
-                <a href="#" class="menu-item" data-tab="products">
+                <a href="#" class="menu-item olist-only" data-tab="products">
                     <i data-feather="package"></i>
                     <span>Product Sales</span>
                 </a>
-                <a href="#" class="menu-item" data-tab="advanced">
+                <a href="#" class="menu-item olist-only" data-tab="advanced">
                     <i data-feather="trending-up"></i>
                     <span>CLV & Forecasting</span>
                 </a>
-                <a href="#" class="menu-item" data-tab="recommendations">
+                <a href="#" class="menu-item olist-only" data-tab="recommendations">
                     <i data-feather="star"></i>
                     <span>Recommendation Engine</span>
+                </a>
+                
+                <!-- Teleco Menu Items -->
+                <a href="#" class="menu-item teleco-only" data-tab="teleco-overview" style="display: none;">
+                    <i data-feather="activity"></i>
+                    <span>Teleco Overview</span>
+                </a>
+                <a href="#" class="menu-item teleco-only" data-tab="teleco-predict" style="display: none;">
+                    <i data-feather="shield"></i>
+                    <span>Risk Predictor</span>
                 </a>
             </nav>
             
@@ -62,7 +75,7 @@
                     <select id="dataset-select">
                         <option value="olist">Olist E-Commerce</option>
                         <option value="instacart" disabled>Instacart Basket (Locked)</option>
-                        <option value="teleco" disabled>Teleco Cohorts (Locked)</option>
+                        <option value="teleco">Teleco Cohorts</option>
                     </select>
                 </div>
                 <div class="user-profile">
@@ -521,10 +534,214 @@
                     </div>
                 </div>
             </div>
+
+            <!-- TELECO TAB PANELS -->
+            <div class="tab-panel teleco-only-panel" id="panel-teleco-overview">
+                <!-- KPI Summary cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-customers"><i data-feather="user"></i></div>
+                        <div class="kpi-content">
+                            <span>Total Subscribers</span>
+                            <h3 id="teleco-total-customers">0</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card" style="border-left: 4px solid var(--accent-rose);">
+                        <div class="kpi-icon icon-risk"><i data-feather="alert-triangle"></i></div>
+                        <div class="kpi-content">
+                            <span>Churn Rate</span>
+                            <h3 id="teleco-churn-rate">0.00%</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-champions"><i data-feather="heart"></i></div>
+                        <div class="kpi-content">
+                            <span>Retained Customers</span>
+                            <h3 id="teleco-retained-customers">0</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-aov"><i data-feather="dollar-sign"></i></div>
+                        <div class="kpi-content">
+                            <span>Avg Monthly Charge</span>
+                            <h3 id="teleco-avg-charge">$0.00</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts row 1 -->
+                <div class="chart-row dual-cols">
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Churn Rate by Contract Type</h4>
+                            <p>Proportion of customers who left by subscription length</p>
+                        </div>
+                        <div class="chart-container" id="chart-teleco-contract"></div>
+                    </div>
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Churn Rate by Payment Method</h4>
+                            <p>Customer attrition grouped by transaction option</p>
+                        </div>
+                        <div class="chart-container" id="chart-teleco-payment"></div>
+                    </div>
+                </div>
+
+                <!-- Charts row 2 -->
+                <div class="chart-row dual-cols">
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Monthly Charges Distribution by Churn Status</h4>
+                            <p>Subscriber volume across pricing bands (Retained vs. Churned)</p>
+                        </div>
+                        <div class="chart-container" id="chart-teleco-monthly"></div>
+                    </div>
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Tenure Distribution vs Churn Status</h4>
+                            <p>Aggregated customer count across lifecycle duration (Months)</p>
+                        </div>
+                        <div class="chart-container" id="chart-teleco-tenure"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-panel teleco-only-panel" id="panel-teleco-predict">
+                <div class="search-panel glass-panel" style="max-width: 900px; margin: 0 auto 30px auto;">
+                    <div class="search-title">
+                        <h3>Teleco Churn Risk Predictor Tool</h3>
+                        <p>Fill out the customer profile below to run the trained XGBoost model and predict their likelihood to churn</p>
+                    </div>
+                    
+                    <form id="predictor-form" style="margin-top: 25px;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                            <!-- Demographics -->
+                            <div class="form-group">
+                                <label for="pred-gender" style="display:block; margin-bottom:8px; color:var(--text-secondary); font-size:0.9rem;">Gender</label>
+                                <select id="pred-gender" style="width:100%; padding:10px; background:#121824; border:1px solid var(--border-glass); border-radius:6px; color:#fff;">
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="pred-senior" style="display:block; margin-bottom:8px; color:var(--text-secondary); font-size:0.9rem;">Senior Citizen</label>
+                                <select id="pred-senior" style="width:100%; padding:10px; background:#121824; border:1px solid var(--border-glass); border-radius:6px; color:#fff;">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="pred-partner" style="display:block; margin-bottom:8px; color:var(--text-secondary); font-size:0.9rem;">Partner</label>
+                                <select id="pred-partner" style="width:100%; padding:10px; background:#121824; border:1px solid var(--border-glass); border-radius:6px; color:#fff;">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="pred-dependents" style="display:block; margin-bottom:8px; color:var(--text-secondary); font-size:0.9rem;">Dependents</label>
+                                <select id="pred-dependents" style="width:100%; padding:10px; background:#121824; border:1px solid var(--border-glass); border-radius:6px; color:#fff;">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                            </div>
+
+                            <!-- Subscription details -->
+                            <div class="form-group">
+                                <label style="display:block; margin-bottom:8px; color:var(--text-secondary); font-size:0.9rem;">Tenure (Months): <span id="tenure-val">12</span></label>
+                                <input type="range" id="pred-tenure" min="0" max="72" value="12" style="width:100%;" oninput="document.getElementById('tenure-val').innerText = this.value">
+                            </div>
+                            <div class="form-group">
+                                <label style="display:block; margin-bottom:8px; color:var(--text-secondary); font-size:0.9rem;">Monthly Charges ($): <span id="monthly-val">65</span></label>
+                                <input type="range" id="pred-monthly" min="18" max="120" value="65" style="width:100%;" oninput="document.getElementById('monthly-val').innerText = this.value">
+                            </div>
+                            <div class="form-group">
+                                <label for="pred-contract" style="display:block; margin-bottom:8px; color:var(--text-secondary); font-size:0.9rem;">Contract</label>
+                                <select id="pred-contract" style="width:100%; padding:10px; background:#121824; border:1px solid var(--border-glass); border-radius:6px; color:#fff;">
+                                    <option value="Month-to-month">Month-to-month</option>
+                                    <option value="One year">One year</option>
+                                    <option value="Two year">Two year</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="pred-payment" style="display:block; margin-bottom:8px; color:var(--text-secondary); font-size:0.9rem;">Payment Method</label>
+                                <select id="pred-payment" style="width:100%; padding:10px; background:#121824; border:1px solid var(--border-glass); border-radius:6px; color:#fff;">
+                                    <option value="Electronic check">Electronic check</option>
+                                    <option value="Mailed check">Mailed check</option>
+                                    <option value="Bank transfer (automatic)">Bank transfer (automatic)</option>
+                                    <option value="Credit card (automatic)">Credit card (automatic)</option>
+                                </select>
+                            </div>
+
+                            <!-- Services -->
+                            <div class="form-group">
+                                <label for="pred-internet" style="display:block; margin-bottom:8px; color:var(--text-secondary); font-size:0.9rem;">Internet Service</label>
+                                <select id="pred-internet" style="width:100%; padding:10px; background:#121824; border:1px solid var(--border-glass); border-radius:6px; color:#fff;">
+                                    <option value="Fiber optic">Fiber optic</option>
+                                    <option value="DSL">DSL</option>
+                                    <option value="No">No Internet Service</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="pred-security" style="display:block; margin-bottom:8px; color:var(--text-secondary); font-size:0.9rem;">Online Security</label>
+                                <select id="pred-security" style="width:100%; padding:10px; background:#121824; border:1px solid var(--border-glass); border-radius:6px; color:#fff;">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No internet service">No internet service</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="pred-tech" style="display:block; margin-bottom:8px; color:var(--text-secondary); font-size:0.9rem;">Tech Support</label>
+                                <select id="pred-tech" style="width:100%; padding:10px; background:#121824; border:1px solid var(--border-glass); border-radius:6px; color:#fff;">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No internet service">No internet service</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="pred-billing" style="display:block; margin-bottom:8px; color:var(--text-secondary); font-size:0.9rem;">Paperless Billing</label>
+                                <select id="pred-billing" style="width:100%; padding:10px; background:#121824; border:1px solid var(--border-glass); border-radius:6px; color:#fff;">
+                                    <option value="Yes">Yes</option>
+                                    <option value="No">No</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Submit button -->
+                        <div style="text-align: center; margin-top: 30px;">
+                            <button type="submit" class="btn btn-primary" style="padding: 12px 35px; font-size: 1rem;">Predict Churn Probability</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Prediction Results card -->
+                <div id="prediction-results-card" class="glass-panel" style="max-width: 600px; margin: 0 auto; display: none; padding: 25px; border-radius: 12px; text-align: center;">
+                    <h3 style="margin-bottom: 10px;">Risk Assessment Result</h3>
+                    <div id="risk-gauge-container" style="margin: 20px 0;">
+                        <!-- Gauge percentage -->
+                        <div style="font-size: 3rem; font-weight: 800; color: var(--accent-rose);" id="risk-percentage">0%</div>
+                        <div style="font-weight: 500; font-size: 1.1rem; text-transform: uppercase;" id="risk-classification">High Risk</div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left; margin-top: 20px;">
+                        <div style="background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.2); padding: 15px; border-radius: 8px;">
+                            <h5 style="color: var(--accent-rose); margin-bottom: 8px;"><i data-feather="alert-triangle" style="width:14px; height:14px; margin-right:5px; vertical-align:middle;"></i>Risk Indicators</h5>
+                            <ul id="risk-indicators-list" style="padding-left: 15px; font-size: 0.85rem; line-height: 1.4;">
+                                <!-- Dynamic indicators -->
+                            </ul>
+                        </div>
+                        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); padding: 15px; border-radius: 8px;">
+                            <h5 style="color: var(--accent-emerald); margin-bottom: 8px;"><i data-feather="shield" style="width:14px; height:14px; margin-right:5px; vertical-align:middle;"></i>Mitigating Factors</h5>
+                            <ul id="mitigating-factors-list" style="padding-left: 15px; font-size: 0.85rem; line-height: 1.4;">
+                                <!-- Dynamic mitigators -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
     <!-- Vanilla Javascript Logic -->
-    <script src="app.js"></script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>

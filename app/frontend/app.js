@@ -14,7 +14,25 @@ let sampleUsers = [];
 document.addEventListener("DOMContentLoaded", () => {
     feather.replace();
     initMenu();
-    loadTabContent(activeTab);
+
+    // Dataset Selector listener & startup synchronization
+    const datasetSelect = document.getElementById("dataset-select");
+    if (datasetSelect) {
+        // Sync layout on load (fixes reload state preservation bugs)
+        switchDataset(datasetSelect.value);
+        
+        datasetSelect.addEventListener("change", (e) => {
+            switchDataset(e.target.value);
+        });
+    } else {
+        loadTabContent(activeTab);
+    }
+
+    // Predictor form listener
+    const predictorForm = document.getElementById("predictor-form");
+    if (predictorForm) {
+        predictorForm.addEventListener("submit", triggerChurnPrediction);
+    }
 
     // Refresh button
     document.getElementById("refresh-btn").addEventListener("click", () => {
@@ -89,6 +107,14 @@ function updateHeaderTitles(tab) {
             title.textContent = "Product Recommendation Engine";
             subtitle.textContent = "Collaborative filtering & product similarities for personalized up-selling";
             break;
+        case "teleco-overview":
+            title.textContent = "Teleco Churn Intelligence Dashboard";
+            subtitle.textContent = "Overview of subscriber attrition, KPIs, and segment behaviors";
+            break;
+        case "teleco-predict":
+            title.textContent = "Teleco Customer Churn Predictor";
+            subtitle.textContent = "Risk assessment model powered by optimized XGBoost";
+            break;
     }
 }
 
@@ -154,6 +180,12 @@ function loadTabContent(tab, forceReload = false) {
             break;
         case "recommendations":
             loadRecommendationsData();
+            break;
+        case "teleco-overview":
+            loadTelecoOverviewData();
+            break;
+        case "teleco-predict":
+            showLoader(false);
             break;
         default:
             showLoader(false);
@@ -688,4 +720,214 @@ function triggerSearch() {
     }
     showLoader(true);
     loadRecommendationsData(userId);
+}
+
+// Dataset Selector Logic
+function switchDataset(dataset) {
+    const olistItems = document.querySelectorAll(".olist-only");
+    const telecoItems = document.querySelectorAll(".teleco-only");
+    
+    // Deactivate all panels and items first
+    document.querySelectorAll(".menu-item").forEach(item => item.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
+    
+    if (dataset === "teleco") {
+        olistItems.forEach(item => item.style.display = "none");
+        telecoItems.forEach(item => item.style.display = "flex");
+        
+        // Activate first teleco tab
+        const firstTelecoItem = document.querySelector(".teleco-only[data-tab='teleco-overview']");
+        if (firstTelecoItem) firstTelecoItem.classList.add("active");
+        
+        const firstTelecoPanel = document.getElementById("panel-teleco-overview");
+        if (firstTelecoPanel) firstTelecoPanel.classList.add("active");
+        
+        activeTab = "teleco-overview";
+    } else {
+        olistItems.forEach(item => item.style.display = "flex");
+        telecoItems.forEach(item => item.style.display = "none");
+        
+        // Activate first olist tab
+        const firstOlistItem = document.querySelector(".olist-only[data-tab='overview']");
+        if (firstOlistItem) firstOlistItem.classList.add("active");
+        
+        const firstOlistPanel = document.getElementById("panel-overview");
+        if (firstOlistPanel) firstOlistPanel.classList.add("active");
+        
+        activeTab = "overview";
+    }
+    updateHeaderTitles(activeTab);
+    loadTabContent(activeTab);
+    feather.replace();
+}
+
+// Teleco Overview Data and Charts Loader
+async function loadTelecoOverviewData() {
+    try {
+        const res = await fetch(`${API_BASE}/api/kpi/teleco/churn`);
+        if (!res.ok) throw new Error("Failed to fetch teleco overview data");
+        const data = await res.json();
+        
+        // Set KPI Cards
+        document.getElementById("teleco-total-customers").textContent = formatNumber(data.total_customers);
+        document.getElementById("teleco-churn-rate").textContent = `${data.churn_rate.toFixed(2)}%`;
+        document.getElementById("teleco-retained-customers").textContent = formatNumber(data.retained_customers);
+        document.getElementById("teleco-avg-charge").textContent = `$${data.avg_monthly_charges.toFixed(2)}`;
+        
+        // Render Chart: Churn by Contract Type
+        const contractOpts = {
+            series: [{ name: 'Churn Rate (%)', data: data.contract_churn.rates }],
+            chart: { type: 'bar', height: 320, toolbar: { show: false } },
+            colors: ['#f59e0b'],
+            plotOptions: { bar: { borderRadius: 4, horizontal: false, columnWidth: '50%' } },
+            xaxis: { categories: data.contract_churn.labels, labels: { style: { colors: '#94a3b8' } } },
+            yaxis: { title: { text: 'Churn Rate (%)', style: { color: '#94a3b8' } }, labels: { style: { colors: '#94a3b8' } } },
+            grid: { borderColor: 'rgba(255,255,255,0.05)' }
+        };
+        charts["teleco-overview-contract"] = new ApexCharts(document.querySelector("#chart-teleco-contract"), contractOpts);
+        charts["teleco-overview-contract"].render();
+        
+        // Render Chart: Churn by Payment Method
+        const paymentOpts = {
+            series: [{ name: 'Churn Rate (%)', data: data.payment_churn.rates }],
+            chart: { type: 'bar', height: 320, toolbar: { show: false } },
+            colors: ['#f43f5e'],
+            plotOptions: { bar: { borderRadius: 4, horizontal: true } },
+            xaxis: { title: { text: 'Churn Rate (%)', style: { color: '#94a3b8' } }, labels: { style: { colors: '#94a3b8' } } },
+            yaxis: { categories: data.payment_churn.labels, labels: { style: { colors: '#94a3b8' } } },
+            grid: { borderColor: 'rgba(255,255,255,0.05)' }
+        };
+        charts["teleco-overview-payment"] = new ApexCharts(document.querySelector("#chart-teleco-payment"), paymentOpts);
+        charts["teleco-overview-payment"].render();
+        
+        // Render Chart: Monthly Charges Distribution
+        const monthlyOpts = {
+            series: [
+                { name: 'Retained', data: data.monthly_charges_dist.retained },
+                { name: 'Churned', data: data.monthly_charges_dist.churned }
+            ],
+            chart: { type: 'bar', height: 320, stacked: true, toolbar: { show: false } },
+            colors: ['#6366f1', '#f43f5e'],
+            plotOptions: { bar: { columnWidth: '60%' } },
+            xaxis: { categories: data.monthly_charges_dist.labels, title: { text: 'Monthly Charge Bins ($)', style: { color: '#94a3b8' } }, labels: { style: { colors: '#94a3b8' } } },
+            yaxis: { title: { text: 'Customer Count', style: { color: '#94a3b8' } }, labels: { style: { colors: '#94a3b8' } } },
+            grid: { borderColor: 'rgba(255,255,255,0.05)' },
+            legend: { labels: { colors: '#f8fafc' } }
+        };
+        charts["teleco-overview-monthly"] = new ApexCharts(document.querySelector("#chart-teleco-monthly"), monthlyOpts);
+        charts["teleco-overview-monthly"].render();
+        
+        // Render Chart: Tenure Distribution
+        const tenureOpts = {
+            series: [
+                { name: 'Retained', data: data.tenure_dist.retained },
+                { name: 'Churned', data: data.tenure_dist.churned }
+            ],
+            chart: { type: 'bar', height: 320, stacked: true, toolbar: { show: false } },
+            colors: ['#10b981', '#f43f5e'],
+            plotOptions: { bar: { columnWidth: '60%' } },
+            xaxis: { categories: data.tenure_dist.labels, title: { text: 'Tenure Bins (Months)', style: { color: '#94a3b8' } }, labels: { style: { colors: '#94a3b8' } } },
+            yaxis: { title: { text: 'Customer Count', style: { color: '#94a3b8' } }, labels: { style: { colors: '#94a3b8' } } },
+            grid: { borderColor: 'rgba(255,255,255,0.05)' },
+            legend: { labels: { colors: '#f8fafc' } }
+        };
+        charts["teleco-overview-tenure"] = new ApexCharts(document.querySelector("#chart-teleco-tenure"), tenureOpts);
+        charts["teleco-overview-tenure"].render();
+        
+    } catch(e) {
+        console.error(e);
+        alert("Error loading Teleco dashboard data: " + e.message);
+    } finally {
+        showLoader(false);
+    }
+}
+
+// Churn Risk Predictor form submit handler
+async function triggerChurnPrediction(e) {
+    e.preventDefault();
+    showLoader(true);
+    
+    const requestData = {
+        gender: document.getElementById("pred-gender").value,
+        SeniorCitizen: document.getElementById("pred-senior").value,
+        Partner: document.getElementById("pred-partner").value,
+        Dependents: document.getElementById("pred-dependents").value,
+        tenure: parseInt(document.getElementById("pred-tenure").value),
+        PhoneService: "Yes",
+        PaperlessBilling: document.getElementById("pred-billing").value,
+        MonthlyCharges: parseFloat(document.getElementById("pred-monthly").value),
+        TotalCharges: parseFloat(document.getElementById("pred-monthly").value) * parseInt(document.getElementById("pred-tenure").value),
+        MultipleLines: "No",
+        InternetService: document.getElementById("pred-internet").value,
+        OnlineSecurity: document.getElementById("pred-security").value,
+        OnlineBackup: "No",
+        DeviceProtection: "No",
+        TechSupport: document.getElementById("pred-tech").value,
+        StreamingTV: "No",
+        StreamingMovies: "No",
+        Contract: document.getElementById("pred-contract").value,
+        PaymentMethod: document.getElementById("pred-payment").value
+    };
+    
+    try {
+        const res = await fetch(`${API_BASE}/api/predict/teleco/churn`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestData)
+        });
+        
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "Prediction request failed");
+        }
+        
+        const data = await res.json();
+        
+        // Display Risk Gauge Cards
+        document.getElementById("risk-percentage").textContent = `${data.churn_probability}%`;
+        const classification = document.getElementById("risk-classification");
+        classification.textContent = data.prediction;
+        
+        if (data.prediction === "Churn") {
+            classification.style.color = "var(--accent-rose)";
+            document.getElementById("risk-percentage").style.color = "var(--accent-rose)";
+        } else {
+            classification.style.color = "var(--accent-emerald)";
+            document.getElementById("risk-percentage").style.color = "var(--accent-emerald)";
+        }
+        
+        // Populate Indicators list
+        const riskList = document.getElementById("risk-indicators-list");
+        riskList.innerHTML = "";
+        if (data.risk_factors.length > 0) {
+            data.risk_factors.forEach(item => {
+                const li = document.createElement("li");
+                li.textContent = item;
+                riskList.appendChild(li);
+            });
+        } else {
+            riskList.innerHTML = "<li>No significant risk flags.</li>";
+        }
+        
+        // Populate Mitigators list
+        const mitList = document.getElementById("mitigating-factors-list");
+        mitList.innerHTML = "";
+        if (data.mitigating_factors.length > 0) {
+            data.mitigating_factors.forEach(item => {
+                const li = document.createElement("li");
+                li.textContent = item;
+                mitList.appendChild(li);
+            });
+        } else {
+            mitList.innerHTML = "<li>No significant protective flags.</li>";
+        }
+        
+        document.getElementById("prediction-results-card").style.display = "block";
+        feather.replace();
+    } catch(e) {
+        console.error(e);
+        alert("Prediction Error: " + e.message);
+    } finally {
+        showLoader(false);
+    }
 }

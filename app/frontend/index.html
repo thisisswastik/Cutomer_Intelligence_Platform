@@ -67,6 +67,20 @@
                     <i data-feather="shield"></i>
                     <span>Risk Predictor</span>
                 </a>
+
+                <!-- Instacart Menu Items -->
+                <a href="#" class="menu-item instacart-only" data-tab="instacart-overview" style="display: none;">
+                    <i data-feather="shopping-cart"></i>
+                    <span>Market Overview</span>
+                </a>
+                <a href="#" class="menu-item instacart-only" data-tab="instacart-products" style="display: none;">
+                    <i data-feather="package"></i>
+                    <span>Product Analytics</span>
+                </a>
+                <a href="#" class="menu-item instacart-only" data-tab="instacart-basket" style="display: none;">
+                    <i data-feather="link"></i>
+                    <span>Basket Rules</span>
+                </a>
             </nav>
             
             <div class="sidebar-footer">
@@ -74,7 +88,7 @@
                     <label for="dataset-select">Active Dataset</label>
                     <select id="dataset-select">
                         <option value="olist">Olist E-Commerce</option>
-                        <option value="instacart" disabled>Instacart Basket (Locked)</option>
+                        <option value="instacart">Instacart Market Basket</option>
                         <option value="teleco">Teleco Cohorts</option>
                     </select>
                 </div>
@@ -735,6 +749,162 @@
                                 <!-- Dynamic mitigators -->
                             </ul>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- INSTACART TAB PANELS                                        -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+
+            <!-- INSTACART: Market Overview -->
+            <div class="tab-panel instacart-only-panel" id="panel-instacart-overview">
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-orders"><i data-feather="shopping-bag"></i></div>
+                        <div class="kpi-content">
+                            <span>Total Orders</span>
+                            <h3 id="ic-total-orders">0</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-customers"><i data-feather="user"></i></div>
+                        <div class="kpi-content">
+                            <span>Unique Customers</span>
+                            <h3 id="ic-unique-customers">0</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-revenue"><i data-feather="box"></i></div>
+                        <div class="kpi-content">
+                            <span>Avg Basket Size</span>
+                            <h3 id="ic-avg-basket">0.0</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon icon-aov"><i data-feather="refresh-cw"></i></div>
+                        <div class="kpi-content">
+                            <span>Repeat Purchase Rate</span>
+                            <h3 id="ic-reorder-rate">0.0%</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-row dual-cols">
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Orders by Hour of Day</h4>
+                            <p>When are customers most likely to place grocery orders?</p>
+                        </div>
+                        <div class="chart-container" id="chart-ic-hour"></div>
+                    </div>
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Orders by Day of Week</h4>
+                            <p>Weekly shopping cadence across all customers</p>
+                        </div>
+                        <div class="chart-container" id="chart-ic-dow"></div>
+                    </div>
+                </div>
+
+                <div class="chart-row dual-cols">
+                    <div class="chart-card glass-panel" style="flex: 1.4;">
+                        <div class="chart-header">
+                            <h4>Top 15 Most Purchased Products</h4>
+                            <p>Products with the highest purchase frequency in the dataset</p>
+                        </div>
+                        <div class="chart-container" id="chart-ic-top-products"></div>
+                    </div>
+                    <div class="chart-card glass-panel" style="flex: 0.6;">
+                        <div class="chart-header">
+                            <h4>Department Sales Distribution</h4>
+                            <p>Share of purchases across grocery departments</p>
+                        </div>
+                        <div class="chart-container" id="chart-ic-dept-donut"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INSTACART: Product Analytics -->
+            <div class="tab-panel instacart-only-panel" id="panel-instacart-products">
+                <div class="chart-row dual-cols">
+                    <div class="chart-card glass-panel" style="flex: 1;">
+                        <div class="chart-header">
+                            <h4>Department Breakdown</h4>
+                            <p>Purchase volume and unique SKU count by grocery department</p>
+                        </div>
+                        <div class="chart-container" id="chart-ic-dept-bar"></div>
+                    </div>
+                    <div class="chart-card glass-panel" style="flex: 1;">
+                        <div class="chart-header">
+                            <h4>Top 30 Aisles by Purchase Volume</h4>
+                            <p>Aisle-level granularity showing where customers shop most</p>
+                        </div>
+                        <div class="chart-container" id="chart-ic-aisles"></div>
+                    </div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Top 20 Products — Purchase Count &amp; Reorder Rate</h4>
+                            <p>Products ranked by total purchases with reorder loyalty metric</p>
+                        </div>
+                        <div class="table-container">
+                            <table class="dashboard-table" id="ic-products-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Product Name</th>
+                                        <th>Total Purchases</th>
+                                        <th>Reorder Rate</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INSTACART: Market Basket Association Rules -->
+            <div class="tab-panel instacart-only-panel" id="panel-instacart-basket">
+                <!-- Segment stat cards -->
+                <div class="kpi-grid" id="ic-segment-cards">
+                    <!-- dynamically rendered -->
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Market Basket Association Rules</h4>
+                            <p>Top product pairings ranked by Lift — items that are bought together significantly more than by chance</p>
+                        </div>
+                        <div class="table-container">
+                            <table class="dashboard-table" id="ic-rules-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Antecedent (If Bought)</th>
+                                        <th>Consequent (Then Also Buys)</th>
+                                        <th>Support</th>
+                                        <th>Confidence</th>
+                                        <th>Lift ↑</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h4>Top 20 Product Pairs by Lift Score</h4>
+                            <p>Visualising the strongest product affinity signals from co-purchase analysis</p>
+                        </div>
+                        <div class="chart-container" id="chart-ic-lift"></div>
                     </div>
                 </div>
             </div>

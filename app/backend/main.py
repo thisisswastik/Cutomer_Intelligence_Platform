@@ -42,6 +42,10 @@ teleco_model = None
 teleco_scaler = None
 teleco_feature_names = None
 
+# Instacart global cache (lazy-loaded on first request)
+instacart_cache = None
+instacart_data_dir = project_root / "datasets" / "instacart_market_ basket"
+
 @app.on_event("startup")
 def load_assets():
     global svd_model, candidate_products, teleco_model, teleco_scaler, teleco_feature_names
@@ -112,6 +116,36 @@ def get_db_conn():
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     return conn
+
+# Instacart lazy-loader: reads + caches downsampled dataset (user_id <= 5000) on first call
+def get_instacart_data():
+    global instacart_cache
+    if instacart_cache is not None:
+        return instacart_cache
+    if not instacart_data_dir.exists():
+        return None
+    print("[Instacart] Loading dataset (user_id <= 5000) — this runs once...")
+    orders = pd.read_csv(instacart_data_dir / "orders.csv")
+    orders = orders[orders["user_id"] <= 5000]
+    order_ids = set(orders["order_id"])
+
+    op_prior = pd.read_csv(instacart_data_dir / "order_products__prior.csv")
+    op_prior = op_prior[op_prior["order_id"].isin(order_ids)]
+
+    products = pd.read_csv(instacart_data_dir / "products.csv")
+    aisles   = pd.read_csv(instacart_data_dir / "aisles.csv")
+    departments = pd.read_csv(instacart_data_dir / "departments.csv")
+
+    product_details = (
+        products
+        .merge(aisles, on="aisle_id")
+        .merge(departments, on="department_id")
+    )
+    df = op_prior.merge(product_details, on="product_id").merge(orders, on="order_id")
+
+    instacart_cache = {"orders": orders, "df": df}
+    print("[Instacart] Dataset cached successfully.")
+    return instacart_cache
 
 # --- API ENDPOINTS ---
 
@@ -477,6 +511,197 @@ def predict_teleco_churn(data: dict):
             "risk_factors": risk_factors[:3],
             "mitigating_factors": mitigators[:3]
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INSTACART ENDPOINTS
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/kpi/instacart/overview")
+def get_instacart_overview():
+    """Headline KPIs + hour/weekday order trends + top products + department sales."""
+    try:
+        data = get_instacart_data()
+        if data is None:
+            raise HTTPException(status_code=404, detail="Instacart dataset not found.")
+
+        orders = data["orders"]
+        df     = data["df"]
+
+        total_orders          = int(orders["order_id"].nunique())
+        unique_customers      = int(orders["user_id"].nunique())
+        unique_products       = int(df["product_id"].nunique())
+        num_departments       = int(df["department"].nunique())
+        basket_sizes          = df.groupby("order_id")["product_id"].count()
+        avg_basket_size       = float(basket_sizes.mean())
+        repeat_purchase_rate  = float(df["reordered"].mean() * 100)
+        avg_orders_per_customer = float(orders.groupby("user_id")["order_id"].nunique().mean())
+
+        # Hour-of-day distribution
+        hour_orders = orders["order_hour_of_day"].value_counts().sort_index()
+
+        # Day-of-week distribution
+        dow_raw    = orders["order_dow"].value_counts().sort_index()
+        dow_labels = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
+
+        # Top 15 products
+        top_15 = df["product_name"].value_counts().head(15)
+
+        # Department sales
+        dept_sales = df["department"].value_counts()
+
+        return {
+            "total_orders":           total_orders,
+            "unique_customers":       unique_customers,
+            "unique_products":        unique_products,
+            "num_departments":        num_departments,
+            "avg_basket_size":        round(avg_basket_size, 2),
+            "repeat_purchase_rate":   round(repeat_purchase_rate, 2),
+            "avg_orders_per_customer": round(avg_orders_per_customer, 2),
+            "hour_orders": {
+                "labels": hour_orders.index.tolist(),
+                "values": hour_orders.values.tolist()
+            },
+            "dow_orders": {
+                "labels": [dow_labels[i] for i in dow_raw.index.tolist()],
+                "values": dow_raw.values.tolist()
+            },
+            "top_15_products": {
+                "names":  top_15.index.tolist(),
+                "counts": top_15.values.tolist()
+            },
+            "dept_sales": {
+                "labels": dept_sales.index.tolist(),
+                "values": dept_sales.values.tolist()
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/kpi/instacart/products")
+def get_instacart_products():
+    """Top-20 products with reorder rates, department breakdown, top aisles."""
+    try:
+        data = get_instacart_data()
+        if data is None:
+            raise HTTPException(status_code=404, detail="Instacart dataset not found.")
+
+        df = data["df"]
+
+        prod_stats = (
+            df.groupby("product_name")
+            .agg(total_purchases=("order_id", "count"), reorder_rate=("reordered", "mean"))
+            .reset_index()
+            .sort_values("total_purchases", ascending=False)
+            .head(20)
+        )
+        prod_stats["reorder_rate"] = prod_stats["reorder_rate"].round(4)
+
+        dept_breakdown = (
+            df.groupby("department")
+            .agg(total_purchases=("order_id", "count"), unique_products=("product_id", "nunique"))
+            .reset_index()
+            .sort_values("total_purchases", ascending=False)
+        )
+
+        top_aisles = (
+            df.groupby(["department", "aisle"]).size()
+            .reset_index(name="total_purchases")
+            .sort_values("total_purchases", ascending=False)
+            .head(30)
+        )
+
+        return {
+            "top_20_products": prod_stats.to_dict("records"),
+            "dept_breakdown":  dept_breakdown.to_dict("records"),
+            "top_aisles":      top_aisles.to_dict("records")
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/kpi/instacart/association")
+def get_instacart_association():
+    """Market basket association rules (co-occurrence on top-200 products) + customer segment stats."""
+    try:
+        from itertools import combinations
+        from collections import Counter
+
+        data = get_instacart_data()
+        if data is None:
+            raise HTTPException(status_code=404, detail="Instacart dataset not found.")
+
+        df     = data["df"]
+        orders = data["orders"]
+
+        # Restrict to top-200 products for speed
+        top_products = df["product_name"].value_counts().head(200).index
+        df_f = df[df["product_name"].isin(top_products)]
+        n_orders = int(df_f["order_id"].nunique())
+
+        prod_counts  = df_f.groupby("product_name")["order_id"].nunique()
+        prod_support = (prod_counts / n_orders).to_dict()
+
+        order_products = df_f.groupby("order_id")["product_name"].apply(set)
+
+        pair_counts: Counter = Counter()
+        for prods in order_products:
+            lst = sorted(list(prods))
+            if len(lst) > 1:
+                pair_counts.update(combinations(lst, 2))
+
+        rules = []
+        for (ant, cons), count in pair_counts.most_common(500):
+            support    = count / n_orders
+            if support < 0.005:
+                continue
+            confidence = count / max(prod_counts.get(ant, 1), 1)
+            ant_s      = prod_support.get(ant, 1e-9)
+            cons_s     = prod_support.get(cons, 1e-9)
+            lift       = support / (ant_s * cons_s) if ant_s * cons_s > 0 else 0.0
+            rules.append({
+                "antecedent":  ant,
+                "consequent":  cons,
+                "support":     round(support, 4),
+                "confidence":  round(confidence, 4),
+                "lift":        round(lift, 4)
+            })
+        rules.sort(key=lambda x: x["lift"], reverse=True)
+        rules = rules[:20]
+
+        # Simple rule-based customer segment counts
+        cust_feat = df.groupby("user_id").agg(
+            total_orders=("order_number", "max"),
+            reorder_rate=("reordered", "mean")
+        ).reset_index()
+
+        heavy_count    = int((cust_feat["total_orders"] >= 10).sum())
+        occasional_count = int((cust_feat["total_orders"] <= 3).sum())
+
+        df2 = df.copy()
+        df2["is_organic"] = df2["product_name"].str.contains("Organic", case=False)
+        organic_share = df2.groupby("user_id")["is_organic"].mean()
+        organic_count = int((organic_share >= 0.30).sum())
+
+        segment_stats = [
+            {"segment": "Heavy Buyers",     "count": heavy_count,    "description": "Customers with ≥10 prior orders",         "color": "#6366f1"},
+            {"segment": "Organic Shoppers", "count": organic_count,  "description": "Customers with ≥30% organic products",    "color": "#10b981"},
+            {"segment": "Occasional Buyers","count": occasional_count,"description": "Customers with ≤3 prior orders",         "color": "#f59e0b"},
+        ]
+
+        return {
+            "rules":         rules,
+            "segment_stats": segment_stats,
+            "total_orders":  n_orders
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

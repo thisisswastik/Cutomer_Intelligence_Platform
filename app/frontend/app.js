@@ -115,6 +115,18 @@ function updateHeaderTitles(tab) {
             title.textContent = "Teleco Customer Churn Predictor";
             subtitle.textContent = "Risk assessment model powered by optimized XGBoost";
             break;
+        case "instacart-overview":
+            title.textContent = "Instacart Market Overview";
+            subtitle.textContent = "Grocery purchase patterns, basket analytics & top product intelligence";
+            break;
+        case "instacart-products":
+            title.textContent = "Product & Department Analytics";
+            subtitle.textContent = "Purchase frequency, reorder loyalty, and aisle-level breakdown";
+            break;
+        case "instacart-basket":
+            title.textContent = "Market Basket Association Rules";
+            subtitle.textContent = "Co-occurrence based affinity rules ranked by Lift — the secret sauce of retail intelligence";
+            break;
     }
 }
 
@@ -186,6 +198,15 @@ function loadTabContent(tab, forceReload = false) {
             break;
         case "teleco-predict":
             showLoader(false);
+            break;
+        case "instacart-overview":
+            loadInstacartOverviewData();
+            break;
+        case "instacart-products":
+            loadInstacartProductsData();
+            break;
+        case "instacart-basket":
+            loadInstacartBasketData();
             break;
         default:
             showLoader(false);
@@ -724,38 +745,49 @@ function triggerSearch() {
 
 // Dataset Selector Logic
 function switchDataset(dataset) {
-    const olistItems = document.querySelectorAll(".olist-only");
-    const telecoItems = document.querySelectorAll(".teleco-only");
-    
+    const olistItems     = document.querySelectorAll(".olist-only");
+    const telecoItems    = document.querySelectorAll(".teleco-only");
+    const instacartItems = document.querySelectorAll(".instacart-only");
+
     // Deactivate all panels and items first
-    document.querySelectorAll(".menu-item").forEach(item => item.classList.remove("active"));
+    document.querySelectorAll(".menu-item").forEach(item  => item.classList.remove("active"));
     document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
-    
+
     if (dataset === "teleco") {
-        olistItems.forEach(item => item.style.display = "none");
-        telecoItems.forEach(item => item.style.display = "flex");
-        
-        // Activate first teleco tab
-        const firstTelecoItem = document.querySelector(".teleco-only[data-tab='teleco-overview']");
-        if (firstTelecoItem) firstTelecoItem.classList.add("active");
-        
-        const firstTelecoPanel = document.getElementById("panel-teleco-overview");
-        if (firstTelecoPanel) firstTelecoPanel.classList.add("active");
-        
+        olistItems.forEach(item     => item.style.display = "none");
+        telecoItems.forEach(item    => item.style.display = "flex");
+        instacartItems.forEach(item => item.style.display = "none");
+
+        const firstItem  = document.querySelector(".teleco-only[data-tab='teleco-overview']");
+        const firstPanel = document.getElementById("panel-teleco-overview");
+        if (firstItem)  firstItem.classList.add("active");
+        if (firstPanel) firstPanel.classList.add("active");
         activeTab = "teleco-overview";
+
+    } else if (dataset === "instacart") {
+        olistItems.forEach(item     => item.style.display = "none");
+        telecoItems.forEach(item    => item.style.display = "none");
+        instacartItems.forEach(item => item.style.display = "flex");
+
+        const firstItem  = document.querySelector(".instacart-only[data-tab='instacart-overview']");
+        const firstPanel = document.getElementById("panel-instacart-overview");
+        if (firstItem)  firstItem.classList.add("active");
+        if (firstPanel) firstPanel.classList.add("active");
+        activeTab = "instacart-overview";
+
     } else {
-        olistItems.forEach(item => item.style.display = "flex");
-        telecoItems.forEach(item => item.style.display = "none");
-        
-        // Activate first olist tab
-        const firstOlistItem = document.querySelector(".olist-only[data-tab='overview']");
-        if (firstOlistItem) firstOlistItem.classList.add("active");
-        
-        const firstOlistPanel = document.getElementById("panel-overview");
-        if (firstOlistPanel) firstOlistPanel.classList.add("active");
-        
+        // Default: Olist
+        olistItems.forEach(item     => item.style.display = "flex");
+        telecoItems.forEach(item    => item.style.display = "none");
+        instacartItems.forEach(item => item.style.display = "none");
+
+        const firstItem  = document.querySelector(".olist-only[data-tab='overview']");
+        const firstPanel = document.getElementById("panel-overview");
+        if (firstItem)  firstItem.classList.add("active");
+        if (firstPanel) firstPanel.classList.add("active");
         activeTab = "overview";
     }
+
     updateHeaderTitles(activeTab);
     loadTabContent(activeTab);
     feather.replace();
@@ -927,6 +959,247 @@ async function triggerChurnPrediction(e) {
     } catch(e) {
         console.error(e);
         alert("Prediction Error: " + e.message);
+    } finally {
+        showLoader(false);
+    }
+}
+
+// =============================================================================
+// INSTACART DATA LOADERS
+// =============================================================================
+
+// Colour palette shared across Instacart charts
+const IC_COLORS = [
+    "#6366f1","#10b981","#f59e0b","#f43f5e","#3b82f6",
+    "#8b5cf6","#ec4899","#14b8a6","#ef4444","#a78bfa",
+    "#06b6d4","#84cc16","#fb923c","#64748b","#e879f9"
+];
+
+async function loadInstacartOverviewData() {
+    try {
+        const res = await fetch(`${API_BASE}/api/kpi/instacart/overview`);
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+
+        // KPI Cards
+        document.getElementById("ic-total-orders").textContent    = formatNumber(data.total_orders);
+        document.getElementById("ic-unique-customers").textContent = formatNumber(data.unique_customers);
+        document.getElementById("ic-avg-basket").textContent      = `${data.avg_basket_size} items`;
+        document.getElementById("ic-reorder-rate").textContent    = `${data.repeat_purchase_rate.toFixed(1)}%`;
+
+        // Chart: Orders by Hour of Day
+        charts["instacart-overview-hour"] = new ApexCharts(
+            document.querySelector("#chart-ic-hour"),
+            {
+                series: [{ name: "Orders", data: data.hour_orders.values }],
+                chart: { type: "area", height: 280, toolbar: { show: false }, sparkline: { enabled: false } },
+                stroke: { curve: "smooth", width: 3 },
+                fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0, stops: [0, 90, 100] } },
+                colors: ["#6366f1"],
+                xaxis: { categories: data.hour_orders.labels, title: { text: "Hour of Day (0–23)", style: { color: "#94a3b8" } }, labels: { style: { colors: "#94a3b8" } } },
+                yaxis: { title: { text: "# Orders", style: { color: "#94a3b8" } }, labels: { style: { colors: "#94a3b8" } } },
+                grid: { borderColor: "rgba(255,255,255,0.05)" },
+                tooltip: { theme: "dark" }
+            }
+        );
+        charts["instacart-overview-hour"].render();
+
+        // Chart: Orders by Day of Week
+        charts["instacart-overview-dow"] = new ApexCharts(
+            document.querySelector("#chart-ic-dow"),
+            {
+                series: [{ name: "Orders", data: data.dow_orders.values }],
+                chart: { type: "bar", height: 280, toolbar: { show: false } },
+                colors: ["#10b981"],
+                plotOptions: { bar: { borderRadius: 4, columnWidth: "60%" } },
+                xaxis: { categories: data.dow_orders.labels, labels: { style: { colors: "#94a3b8" } } },
+                yaxis: { title: { text: "# Orders", style: { color: "#94a3b8" } }, labels: { style: { colors: "#94a3b8" } } },
+                grid: { borderColor: "rgba(255,255,255,0.05)" },
+                tooltip: { theme: "dark" }
+            }
+        );
+        charts["instacart-overview-dow"].render();
+
+        // Chart: Top 15 Products (horizontal bar)
+        charts["instacart-overview-topprods"] = new ApexCharts(
+            document.querySelector("#chart-ic-top-products"),
+            {
+                series: [{ name: "Purchases", data: [...data.top_15_products.counts].reverse() }],
+                chart: { type: "bar", height: 380, toolbar: { show: false } },
+                colors: ["#6366f1"],
+                plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: "70%" } },
+                xaxis: { title: { text: "Total Purchases", style: { color: "#94a3b8" } }, labels: { style: { color: "#94a3b8" } } },
+                yaxis: { categories: [...data.top_15_products.names].reverse(), labels: { style: { colors: "#94a3b8", fontSize: "11px" } } },
+                grid: { borderColor: "rgba(255,255,255,0.05)" },
+                tooltip: { theme: "dark" }
+            }
+        );
+        charts["instacart-overview-topprods"].render();
+
+        // Chart: Department Donut
+        charts["instacart-overview-dept"] = new ApexCharts(
+            document.querySelector("#chart-ic-dept-donut"),
+            {
+                series: data.dept_sales.values,
+                chart: { type: "donut", height: 380 },
+                labels: data.dept_sales.labels,
+                colors: IC_COLORS,
+                legend: { position: "bottom", labels: { colors: "#f8fafc" }, fontSize: "11px" },
+                plotOptions: { pie: { donut: { size: "65%" } } },
+                tooltip: { theme: "dark" }
+            }
+        );
+        charts["instacart-overview-dept"].render();
+
+    } catch(e) {
+        console.error("Instacart overview error:", e);
+        alert("Error loading Instacart Market Overview: " + e.message);
+    } finally {
+        showLoader(false);
+    }
+}
+
+async function loadInstacartProductsData() {
+    try {
+        const res = await fetch(`${API_BASE}/api/kpi/instacart/products`);
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+
+        // Chart: Department bar
+        const deptNames   = data.dept_breakdown.map(d => d.department);
+        const deptCounts  = data.dept_breakdown.map(d => d.total_purchases);
+        const deptUniq    = data.dept_breakdown.map(d => d.unique_products);
+
+        charts["instacart-products-dept"] = new ApexCharts(
+            document.querySelector("#chart-ic-dept-bar"),
+            {
+                series: [
+                    { name: "Purchases", data: deptCounts },
+                    { name: "Unique Products", data: deptUniq }
+                ],
+                chart: { type: "bar", height: 340, toolbar: { show: false } },
+                colors: ["#6366f1", "#10b981"],
+                plotOptions: { bar: { borderRadius: 3, columnWidth: "60%", grouped: true } },
+                xaxis: { categories: deptNames, labels: { rotate: -40, style: { colors: "#94a3b8", fontSize: "10px" } } },
+                yaxis: { labels: { style: { colors: "#94a3b8" } } },
+                legend: { labels: { colors: "#f8fafc" } },
+                grid: { borderColor: "rgba(255,255,255,0.05)" },
+                tooltip: { theme: "dark" }
+            }
+        );
+        charts["instacart-products-dept"].render();
+
+        // Chart: Top Aisles horizontal bar
+        const aisleNames  = data.top_aisles.map(a => a.aisle).reverse();
+        const aisleCounts = data.top_aisles.map(a => a.total_purchases).reverse();
+
+        charts["instacart-products-aisles"] = new ApexCharts(
+            document.querySelector("#chart-ic-aisles"),
+            {
+                series: [{ name: "Purchases", data: aisleCounts }],
+                chart: { type: "bar", height: 520, toolbar: { show: false } },
+                colors: ["#f59e0b"],
+                plotOptions: { bar: { horizontal: true, borderRadius: 3, barHeight: "70%" } },
+                xaxis: { labels: { style: { colors: "#94a3b8" } } },
+                yaxis: { categories: aisleNames, labels: { style: { colors: "#94a3b8", fontSize: "10px" } } },
+                grid: { borderColor: "rgba(255,255,255,0.05)" },
+                tooltip: { theme: "dark" }
+            }
+        );
+        charts["instacart-products-aisles"].render();
+
+        // Table: Top 20 Products
+        const prodBody = document.querySelector("#ic-products-table tbody");
+        prodBody.innerHTML = "";
+        data.top_20_products.forEach((p, i) => {
+            const rateColor = p.reorder_rate > 0.6 ? "var(--accent-emerald)" : p.reorder_rate > 0.4 ? "#f59e0b" : "var(--accent-rose)";
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td><strong>${p.product_name}</strong></td>
+                <td>${formatNumber(p.total_purchases)}</td>
+                <td style="color:${rateColor}; font-weight:600;">${(p.reorder_rate * 100).toFixed(1)}%</td>
+            `;
+            prodBody.appendChild(tr);
+        });
+
+    } catch(e) {
+        console.error("Instacart products error:", e);
+        alert("Error loading Instacart Product Analytics: " + e.message);
+    } finally {
+        showLoader(false);
+    }
+}
+
+async function loadInstacartBasketData() {
+    try {
+        const res = await fetch(`${API_BASE}/api/kpi/instacart/association`);
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+
+        // Segment KPI Cards (dynamic)
+        const segGrid = document.getElementById("ic-segment-cards");
+        segGrid.innerHTML = "";
+        data.segment_stats.forEach(seg => {
+            const card = document.createElement("div");
+            card.className = "kpi-card";
+            card.style.borderLeft = `4px solid ${seg.color}`;
+            card.innerHTML = `
+                <div class="kpi-icon" style="background: ${seg.color}22; color: ${seg.color};">
+                    <i data-feather="users"></i>
+                </div>
+                <div class="kpi-content">
+                    <span>${seg.segment}</span>
+                    <h3>${formatNumber(seg.count)}</h3>
+                    <small style="color:var(--text-secondary); font-size:0.75rem;">${seg.description}</small>
+                </div>
+            `;
+            segGrid.appendChild(card);
+        });
+        feather.replace();
+
+        // Rules Table
+        const rulesBody = document.querySelector("#ic-rules-table tbody");
+        rulesBody.innerHTML = "";
+        data.rules.forEach((rule, i) => {
+            const liftColor = rule.lift >= 3 ? "var(--accent-emerald)" : rule.lift >= 2 ? "#f59e0b" : "#94a3b8";
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td><span style="background:rgba(99,102,241,0.15);color:#818cf8;padding:3px 8px;border-radius:4px;font-size:0.85rem;">${rule.antecedent}</span></td>
+                <td><span style="background:rgba(16,185,129,0.15);color:#34d399;padding:3px 8px;border-radius:4px;font-size:0.85rem;">${rule.consequent}</span></td>
+                <td>${(rule.support * 100).toFixed(2)}%</td>
+                <td>${(rule.confidence * 100).toFixed(1)}%</td>
+                <td style="color:${liftColor}; font-weight:700;">${rule.lift.toFixed(2)}×</td>
+            `;
+            rulesBody.appendChild(tr);
+        });
+
+        // Chart: Lift Score Bar (top 20 pairs as labels)
+        const pairLabels = data.rules.map(r => `${r.antecedent.substring(0,15)}… → ${r.consequent.substring(0,15)}…`).reverse();
+        const liftVals   = data.rules.map(r => r.lift).reverse();
+
+        charts["instacart-basket-lift"] = new ApexCharts(
+            document.querySelector("#chart-ic-lift"),
+            {
+                series: [{ name: "Lift", data: liftVals }],
+                chart: { type: "bar", height: 500, toolbar: { show: false } },
+                colors: ["#6366f1"],
+                plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: "65%",
+                    dataLabels: { position: "top" }
+                } },
+                dataLabels: { enabled: true, formatter: v => v.toFixed(2) + "×", style: { colors: ["#f8fafc"], fontSize: "11px" } },
+                xaxis: { title: { text: "Lift Score", style: { color: "#94a3b8" } }, labels: { style: { colors: "#94a3b8" } } },
+                yaxis: { categories: pairLabels, labels: { style: { colors: "#94a3b8", fontSize: "10px" } } },
+                grid: { borderColor: "rgba(255,255,255,0.05)" },
+                tooltip: { theme: "dark", y: { formatter: v => v.toFixed(4) + "×" } }
+            }
+        );
+        charts["instacart-basket-lift"].render();
+
+    } catch(e) {
+        console.error("Instacart basket error:", e);
+        alert("Error loading Market Basket Rules: " + e.message);
     } finally {
         showLoader(false);
     }

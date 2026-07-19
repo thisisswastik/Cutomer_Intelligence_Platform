@@ -11,8 +11,10 @@ venv/
 .venv/
 env/
 
-# Datasets (large files)
-datasets/
+# Datasets (large raw files)
+datasets/*
+!datasets/precomputed/
+
 
 # Local configuration and logs
 *.log

@@ -45,6 +45,7 @@ teleco_feature_names = None
 # Instacart global cache (lazy-loaded on first request)
 instacart_cache = None
 instacart_data_dir = project_root / "datasets" / "instacart_market_ basket"
+instacart_sample_dir = project_root / "datasets" / "precomputed" / "instacart_sample"
 
 @app.on_event("startup")
 def load_assets():
@@ -117,24 +118,29 @@ def get_db_conn():
     conn.row_factory = sqlite3.Row
     return conn
 
-# Instacart lazy-loader: reads + caches downsampled dataset (user_id <= 5000) on first call
+# Instacart lazy-loader: reads + caches downsampled dataset on first call
 def get_instacart_data():
     global instacart_cache
     if instacart_cache is not None:
         return instacart_cache
-    if not instacart_data_dir.exists():
+
+    data_dir = instacart_data_dir if instacart_data_dir.exists() else instacart_sample_dir
+    if not data_dir.exists():
         return None
-    print("[Instacart] Loading dataset (user_id <= 5000) — this runs once...")
-    orders = pd.read_csv(instacart_data_dir / "orders.csv")
-    orders = orders[orders["user_id"] <= 5000]
+
+    print(f"[Instacart] Loading dataset from {data_dir.name} — this runs once...")
+    orders = pd.read_csv(data_dir / "orders.csv")
+    if "user_id" in orders.columns and orders["user_id"].max() > 2500:
+        orders = orders[orders["user_id"] <= 2500]
     order_ids = set(orders["order_id"])
 
-    op_prior = pd.read_csv(instacart_data_dir / "order_products__prior.csv")
-    op_prior = op_prior[op_prior["order_id"].isin(order_ids)]
+    op_prior = pd.read_csv(data_dir / "order_products__prior.csv")
+    if len(op_prior) > len(order_ids) * 20:
+        op_prior = op_prior[op_prior["order_id"].isin(order_ids)]
 
-    products = pd.read_csv(instacart_data_dir / "products.csv")
-    aisles   = pd.read_csv(instacart_data_dir / "aisles.csv")
-    departments = pd.read_csv(instacart_data_dir / "departments.csv")
+    products = pd.read_csv(data_dir / "products.csv")
+    aisles   = pd.read_csv(data_dir / "aisles.csv")
+    departments = pd.read_csv(data_dir / "departments.csv")
 
     product_details = (
         products

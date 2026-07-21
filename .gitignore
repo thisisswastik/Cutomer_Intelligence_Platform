@@ -14,6 +14,7 @@ env/
 # Datasets (large raw files)
 datasets/*
 !datasets/precomputed/
+!datasets/teleco/
 
 
 # Local configuration and logs
